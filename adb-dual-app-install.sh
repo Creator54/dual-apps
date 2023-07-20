@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+set -x # Enable debugging
+#pm is just a wrapper for
+#cmd package "@"
 
 if [[ -z $1 ]]; then
 	echo "No package passed!"
@@ -21,27 +24,29 @@ else
 
 		## Perform the installation for user 95
 		TOTAL_APKS_SIZE=0
-		for x in $(adb shell "ls $pkg_path"); do
-			TOTAL_APKS_SIZE=$((TOTAL_APKS_SIZE + $(adb shell "ls -l $pkg_path/$x" | awk '{print $5}')))
+		for apk in $(adb shell find "$pkg_path" -type f); do
+			apk_size=$(adb shell stat -c %s "$apk")
+			TOTAL_APKS_SIZE=$((TOTAL_APKS_SIZE + apk_size))
 		done
 		echo $TOTAL_APKS_SIZE
-		SESSION_ID=$(adb shell pm install-create --user 95 -S $TOTAL_APKS_SIZE | cut -d "[" -f2 | cut -d "]" -f1)
+
+		SESSION_ID=$(adb shell pm install-create -S $TOTAL_APKS_SIZE | cut -d "[" -f2 | cut -d "]" -f1)
 		echo "Session ID: $SESSION_ID"
 
 		## Get a list of all the APKs in the package directory
 		apk_list=$(adb shell "cd $pkg_path; ls")
 
 		## Loop through each APK and stage it for installation
-		index=0
+		index=1
 		for apk in $apk_list; do
 			apk_size=$(adb shell stat -c %s "$pkg_path/$apk")
 			echo "Staging APK: $apk (size: $apk_size)"
-			adb shell pm install-write -S "$apk_size" "$SESSION_ID" "$index" "$pkg_path/$apk"
+			adb shell pm install-write -S "$apk_size" "$SESSION_ID" "${index}_$apk" $pkg_path/$apk
 			index=$((index + 1))
 		done
 
 		## Check if all APKs have been staged successfully
-		if [[ $index -eq $(echo "$apk_list" | wc -w) ]]; then
+		if [[ $((index - 1)) -eq $(echo "$apk_list" | wc -w) ]]; then
 			## Commit the installation
 			adb shell pm install-commit "$SESSION_ID"
 			echo "Installation committed successfully"
