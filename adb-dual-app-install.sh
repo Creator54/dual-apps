@@ -24,7 +24,7 @@ get_selected_package() {
 install_package() {
 	local pkg="$1"
 
-	pkg_name=$(adb shell pm list packages --user 0 | grep "$pkg" | cut -d ":" -f2 | tr -d '[:space:]')
+	pkg_name=$(adb shell pm list packages --user 0 | grep "$pkg" | cut -d ":" -f2 | fzf | tr -d '[:space:]')
 	if [[ -z "$pkg_name" ]]; then
 		show_message "Invalid package selected. Please select a valid package."
 		get_selected_package
@@ -81,6 +81,22 @@ install_package() {
 	fi
 }
 
+# Function to uninstall a package
+uninstall_package() {
+	local pkg="$1"
+
+	pkg_name=$(adb shell pm list packages --user 0 | grep "$pkg" | cut -d ":" -f2 | fzf | tr -d '[:space:]')
+	if [[ -z "$pkg_name" ]]; then
+		show_message "Invalid package selected. Please select a valid package."
+		get_selected_package
+		return
+	fi
+
+	show_message "Uninstalling package: $pkg_name"
+	adb shell pm uninstall --user 95 "$pkg_name"
+	show_message "Package uninstalled successfully."
+}
+
 # Function to check if any ADB device is available
 check_adb_devices() {
 	if ! adb devices | grep -q 'device$'; then
@@ -91,28 +107,47 @@ check_adb_devices() {
 
 # Function to display the usage menu
 show_usage() {
-	show_message "Usage: $0 [-d|--debug] [-h|--help] [package_name]"
+	show_message "Usage: $0 [-d|--debug] [-h|--help] [-u|--uninstall] [package_name]"
 	show_message "Options:"
-	show_message "  -d, --debug   Enable debug mode"
-	show_message "  -h, --help    Show usage menu"
+	show_message "  -d, --debug      Enable debug mode"
+	show_message "  -h, --help       Show usage menu"
+	show_message "  -u, --uninstall  Uninstall the specified package"
 }
 
 # Main script
 main() {
 	# Check for flags
-	if [[ "$1" == "-d" || "$1" == "--debug" ]]; then
-		enable_debug
-		shift
-	elif [[ "$1" == "-h" || "$1" == "--help" ]]; then
-		show_usage
-		exit 0
-	elif [[ -n "$1" ]]; then
-		if [[ "${1:0:1}" == "-" ]]; then
+	while [[ "$1" =~ ^- ]]; do
+		case "$1" in
+		-d | --debug)
+			enable_debug
+			shift
+			;;
+		-h | --help)
+			show_usage
+			exit 0
+			;;
+		-u | --uninstall)
+			shift
+			if [[ -z "$1" ]]; then
+				package_name=$(get_selected_package)
+				if [[ -z "$package_name" ]]; then
+					show_message "No package selected. Exiting."
+					exit 1
+				fi
+				uninstall_package "$package_name"
+			else
+				uninstall_package "$1"
+			fi
+			exit 0
+			;;
+		-*)
 			show_message "Invalid flag: $1"
 			show_usage
 			exit 1
-		fi
-	fi
+			;;
+		esac
+	done
 
 	check_adb_devices
 
