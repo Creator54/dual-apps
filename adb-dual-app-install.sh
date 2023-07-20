@@ -4,7 +4,7 @@ set -x # Enable debugging
 #cmd package "@"
 
 if [[ -z $1 ]]; then
-	echo "No package passed!"
+	$0 $(adb shell pm list packages --user 0 | cut -d ":" -f 2 | fzf)
 else
 	pkg="$1"
 	if [[ $(adb devices | wc -l) -gt 2 ]]; then
