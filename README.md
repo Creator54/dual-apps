@@ -1,11 +1,14 @@
 # Samsung Dual App Installer
 
-This script facilitates the creation of dual apps on Samsung phones, provided that dual apps are supported.
+This script facilitates the creation of dual apps on Samsung phones, provided that `DualMessenger` is supported.
 
 ## Usage
 
 1. Connect your device via ADB.
-2. Run the script `./adb-dual-app-install.sh`.
+2. Run the script
+```bash
+curl -sL https://raw.githubusercontent.com/Creator54/dual-apps/main/adb-dual-app-install.sh | bash
+```
 3. Select the app you want to duplicate and press enter twice.
 
 ## Preview
